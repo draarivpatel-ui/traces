@@ -1,23 +1,38 @@
 // One page: sign in with GitHub (login.flisk.si), see the newest problems by app and kind.
 export const PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Flisk Traces</title>
 <style>
-:root{--bg:#fbfaf6;--fg:#15171a;--mute:#6b6f76;--line:#dcdad2;--bad:#b3261e}
-@media(prefers-color-scheme:dark){:root{--bg:#101214;--fg:#eceae4;--mute:#9a9ea5;--line:#2a2d31;--bad:#ff8a80}}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
-main{max-width:980px;margin:0 auto;padding:24px 16px}
-h1{font-size:20px;margin:0 0 4px}p{color:var(--mute);margin:0 0 16px}
-input,select,button{font:inherit;color:inherit;background:transparent;border:1px solid var(--line);border-radius:0;padding:6px 10px}
-button{background:var(--fg);color:var(--bg);cursor:pointer}
-.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-.tot{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.tot span{border:1px solid var(--line);padding:4px 10px}
-table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:8px 6px;border-top:1px solid var(--line);vertical-align:top}
-th{color:var(--mute);font-weight:500}.k-error,.k-unexpected{color:var(--bad)}.dim{color:var(--mute)}
-@media(max-width:640px){.hide{display:none}}
+:root{--bg:#000;--card:#0a0a0b;--card2:#111113;--ink:#fff;--soft:#d6d3cc;--mute:#9a9690;--faint:#5f5c57;--line:rgba(255,255,255,.1);--line2:rgba(255,255,255,.18);--bad:#ff8a9a;--warn:#ffd27f;--ok:#4ade80;--violet:#b49cff;--holo:linear-gradient(120deg,#7fe3f5,#b49cff 50%,#ff9fd8);--mono:ui-monospace,"SF Mono","Geist Mono",Menlo,monospace;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:300 15px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:-120px -20% auto;height:560px;pointer-events:none;background:radial-gradient(ellipse 50% 45% at 30% 30%,rgba(66,92,255,.22),transparent 70%),radial-gradient(ellipse 35% 35% at 78% 20%,rgba(255,159,216,.12),transparent 70%)}
+main{position:relative;max-width:1060px;margin:0 auto;padding:40px 20px 64px}
+.kicker{font:500 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+h1{font:200 clamp(34px,6vw,56px)/1.05 Inter,system-ui,sans-serif;letter-spacing:-.035em;margin:14px 0 12px}
+h1 span{background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent}
+p{color:var(--soft);margin:0 0 28px;max-width:38em}
+input,select,button,.btn{font:400 13px var(--mono);color:var(--soft);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 16px;text-decoration:none}
+select{appearance:none;padding-right:16px}
+button,.btn{background:var(--ink);color:#000;border-color:var(--ink);cursor:pointer;font-weight:500}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line2)}
+button:hover,.btn:hover{opacity:.88}select:hover{border-color:var(--line2)}
+:focus-visible{outline:2px solid var(--violet);outline-offset:3px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:22px}
+.tot{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}.tot span{font:400 12px var(--mono);color:var(--soft);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+.wrapt{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:12px 14px;border-top:1px solid var(--line);vertical-align:top}
+th{border-top:0;font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);background:var(--card2)}
+tbody tr:hover td{background:rgba(255,255,255,.025)}
+td:first-child,.dim{color:var(--mute)}td:first-child{font:400 12px var(--mono);white-space:nowrap}.dim{font-size:13px}
+td[class^=k-]{font:500 12px var(--mono)}td[class^=k-]::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;background:currentColor}
+.k-error,.k-unexpected{color:var(--bad)}.k-rerouted,.k-slow{color:var(--warn)}.k-capped{color:var(--violet)}
+#msg{padding:18px 14px;color:var(--mute)}#msg:empty{display:none}
+footer{margin-top:28px;font:400 12px var(--mono);color:var(--faint)}
+@media(max-width:640px){.hide{display:none}main{padding-top:24px}td,th{padding:10px}}
 </style></head><body><main>
-<h1>Flisk Traces</h1><p>Only what went wrong: errors, reroutes, slow or unexpected flows, hit caps. Kept 14 days.</p>
-<div class="bar"><a id="signin" href="/auth/start">Sign in with GitHub</a><select id="app"><option value="">All apps</option></select><select id="kind"><option value="">All kinds</option><option>error</option><option>rerouted</option><option>slow</option><option>unexpected</option><option>capped</option></select><select id="days"><option>1</option><option selected>7</option><option>14</option></select><button id="go">Show</button></div>
-<div class="tot" id="tot"></div><div id="msg" class="dim"></div>
-<table><thead><tr><th>When</th><th>App</th><th>Kind</th><th>What</th><th class="hide">Planned → happened</th><th class="hide">Time</th></tr></thead><tbody id="rows"></tbody></table>
+<div class="kicker">Flisk &middot; Traces</div><h1>Only what <span>went wrong.</span></h1><p>Errors, reroutes, slow or unexpected flows and hit caps. A normal request writes nothing. Kept 14 days.</p>
+<div class="bar"><a class="btn ghost" id="signin" href="/auth/start">Sign in with GitHub</a><select id="app"><option value="">All apps</option></select><select id="kind"><option value="">All kinds</option><option>error</option><option>rerouted</option><option>slow</option><option>unexpected</option><option>capped</option></select><select id="days"><option>1</option><option selected>7</option><option>14</option></select><button id="go">Show</button></div>
+<div class="tot" id="tot"></div>
+<div class="wrapt"><div id="msg"></div><table><thead><tr><th>When</th><th>App</th><th>Kind</th><th>What</th><th class="hide">Planned → happened</th><th class="hide">Time</th></tr></thead><tbody id="rows"></tbody></table></div><footer>No prompts, answers or keys are ever stored.</footer>
 </main><script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
