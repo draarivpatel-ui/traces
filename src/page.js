@@ -30,9 +30,9 @@ footer{margin-top:28px;font:400 12px var(--mono);color:var(--faint)}
 @media(max-width:640px){.hide{display:none}main{padding-top:24px}td,th{padding:10px}}
 </style></head><body><main>
 <div class="kicker">Flisk &middot; Traces</div><h1>Only what <span>went wrong.</span></h1><p>Errors, reroutes, slow or unexpected flows and hit caps. A normal request writes nothing. Kept 14 days.</p>
-<div class="bar"><a class="btn ghost" id="signin" href="/auth/start">Sign in with GitHub</a><select id="app"><option value="">All apps</option></select><select id="kind"><option value="">All kinds</option><option>error</option><option>rerouted</option><option>slow</option><option>unexpected</option><option>capped</option></select><select id="days"><option>1</option><option selected>7</option><option>14</option></select><button id="go">Show</button></div>
+<div class="bar"><a class="btn" id="signin" href="/auth/start">Sign in with GitHub</a><select id="app"><option value="">All apps</option></select><select id="kind"><option value="">All kinds</option><option>error</option><option>rerouted</option><option>slow</option><option>unexpected</option><option>capped</option></select><select id="days"><option value="1">Last 1 day</option><option value="7" selected>Last 7 days</option><option value="14">Last 14 days</option></select><button id="go">Refresh</button></div>
 <div class="tot" id="tot"></div>
-<div class="wrapt"><div id="msg"></div><table><thead><tr><th>When</th><th>App</th><th>Kind</th><th>What</th><th class="hide">Planned → happened</th><th class="hide">Time</th></tr></thead><tbody id="rows"></tbody></table></div><footer>No prompts, answers or keys are ever stored.</footer>
+<div class="wrapt" id="wrapt"><div id="msg"></div><table><thead><tr><th>When</th><th>App</th><th>Kind</th><th>What</th><th class="hide">Planned → happened</th><th class="hide">Time</th></tr></thead><tbody id="rows"></tbody></table></div><footer>No prompts, answers or keys are ever stored.</footer>
 </main><script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -40,7 +40,8 @@ async function load(){
   const q=new URLSearchParams({days:$('days').value});if($('app').value)q.set('app',$('app').value);if($('kind').value)q.set('kind',$('kind').value);
   $('msg').textContent='Loading…';
   const r=await fetch('/api/events?'+q,{credentials:'same-origin'});
-  if(!r.ok){$('msg').textContent='Sign in with a GitHub account that may read traces.';return}
+  if(!r.ok){$('msg').textContent='Sign in with a GitHub account that may read traces.';$('rows').innerHTML='';$('tot').innerHTML='';$('wrapt').querySelector('table').style.display='none';return}
+  $('wrapt').querySelector('table').style.display='';
   const d=await r.json();
   $('signin').style.display='none';
   const apps=[...new Set(d.totals.map(t=>t.app))];const cur=$('app').value;
@@ -49,5 +50,5 @@ async function load(){
   $('msg').textContent=d.events.length?'':'Nothing went wrong in this time. That is the goal.';
   $('rows').innerHTML=d.events.map(e=>'<tr><td class="dim">'+esc(e.created.slice(5,16).replace('T',' '))+'</td><td>'+esc(e.app)+'</td><td class="k-'+esc(e.kind)+'">'+esc(e.kind)+(e.n>1?' ×'+e.n:'')+'</td><td>'+esc(e.why)+'<div class="dim">'+esc(e.route)+(e.detail?' · '+esc(e.detail):'')+'</div></td><td class="hide">'+esc([e.expected,e.actual].filter(Boolean).join(' → '))+'</td><td class="hide">'+(e.ms!=null?Math.round(e.ms/100)/10+' s':'')+'</td></tr>').join('');
 }
-$('go').onclick=load;load();
+$('go').onclick=load;['app','kind','days'].forEach(i=>$(i).onchange=load);load();
 </script></body></html>`;
