@@ -32,7 +32,7 @@ footer{margin-top:28px;font:400 12px var(--mono);color:var(--faint)}
 <div class="kicker">Flisk &middot; Traces</div><h1>Only what <span>went wrong.</span></h1><p>Errors, reroutes, slow or unexpected flows and hit caps. A normal request writes nothing. Kept 14 days.</p>
 <div class="bar"><a class="btn" id="signin" href="/auth/start">Sign in with GitHub</a><select id="app"><option value="">All apps</option></select><select id="kind"><option value="">All kinds</option><option>error</option><option>rerouted</option><option>slow</option><option>unexpected</option><option>capped</option></select><select id="days"><option value="1">Last 1 day</option><option value="7" selected>Last 7 days</option><option value="14">Last 14 days</option></select><button id="go">Refresh</button></div>
 <div class="tot" id="tot"></div>
-<div class="wrapt" id="wrapt"><div id="msg"></div><table><thead><tr><th>When</th><th>App</th><th>Kind</th><th>What</th><th class="hide">Planned → happened</th><th class="hide">Time</th></tr></thead><tbody id="rows"></tbody></table></div><footer>No prompts, answers or keys are ever stored.</footer>
+<div class="wrapt" id="wrapt"><div id="msg"></div><table><thead><tr><th title="UTC">When (UTC)</th><th>App</th><th>Kind</th><th>What</th><th class="hide">Planned → happened</th><th class="hide">Time</th></tr></thead><tbody id="rows"></tbody></table></div><footer>No prompts, answers or keys are ever stored.</footer>
 </main><script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
