@@ -12,7 +12,9 @@ CREATE TABLE IF NOT EXISTS traces (
   effort TEXT,
   ms INTEGER,
   status INTEGER,
-  detail TEXT                   -- first 200 characters of the error, no prompt text
+  detail TEXT,                  -- first 200 characters of the error, no prompt text
+  n INTEGER NOT NULL DEFAULT 1, -- how many times the same event repeated inside a minute
+  last TEXT NOT NULL            -- time of the latest repeat
 );
 CREATE INDEX IF NOT EXISTS traces_created ON traces (created);
 CREATE INDEX IF NOT EXISTS traces_kind ON traces (app, kind, created);

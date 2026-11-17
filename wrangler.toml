@@ -1,0 +1,18 @@
+# traces.flisk.si: Flisk Workers send a row only when a request went wrong or took an unexpected path.
+name = "flisk-traces"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+routes = [{ pattern = "traces.flisk.si", custom_domain = true }]
+
+# Daily: delete traces older than 14 days.
+[triggers]
+crons = ["23 3 * * *"]
+
+# Create once: bunx wrangler@4 d1 create flisk-traces, put its id below, then
+#   bunx wrangler@4 d1 execute flisk-traces --remote --file schema.sql
+[[d1_databases]]
+binding = "DB"
+database_name = "flisk-traces"
+database_id = "REPLACE_WITH_D1_ID"
+
+# Secrets: TRACE_KEYS (comma list "chat:<key>,inference:<key>", one key per app), ADMIN_KEY (reads the page).

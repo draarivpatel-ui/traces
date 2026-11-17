@@ -1,11 +1,11 @@
 # Tasks
 
 ## 1. Traces Worker
-- [ ] 1.1 Worker, D1 database, `schema.sql`, secrets, `traces.flisk.si`
-- [ ] 1.2 `POST /v1/trace` with per-key limit, field whitelist (reject anything named prompt, answer or key) and same-event merging
-- [ ] 1.3 Daily cleanup cron, 14 days
-- [ ] 1.4 Read-only page behind GitHub login
-- [ ] 1.5 Tests for ingest, limit, merge, cleanup and the page queries
+- [x] 1.1 Worker code, `schema.sql`, `wrangler.toml` (owner still creates the D1 database, secrets and domain, see README)
+- [x] 1.2 `POST /v1/trace` with per-key limit, field whitelist (reject anything named prompt, answer or key) and same-event merging
+- [x] 1.3 Daily cleanup cron, 14 days
+- [x] 1.4 Read-only page behind GitHub login
+- [x] 1.5 Tests for ingest, limit, merge, cleanup and the page queries
 
 ## 2. Chat first
 - [ ] 2.1 Add `trace.js` to flisk-sh/chat; send `error` and `capped` from the ask, build and voice paths
