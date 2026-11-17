@@ -19,6 +19,11 @@ export function appForKey(env, given) {
     const i = pair.indexOf(':');
     if (i > 0 && pair.slice(i + 1) === given) return pair.slice(0, i).trim();
   }
+  // One secret per app: TRACE_KEY_BRAIN=<key> belongs to "brain". Adds an app without rewriting TRACE_KEYS.
+  for (const [name, value] of Object.entries(env)) {
+    const m = /^TRACE_KEY_([A-Z0-9_]+)$/.exec(name);
+    if (m && typeof value === 'string' && value && value === given) return m[1].toLowerCase();
+  }
   return null;
 }
 

@@ -31,6 +31,13 @@ test('a key belongs to one app, a wrong key to none', () => {
   expect(appForKey(e, '')).toBe(null);
 });
 
+test('a TRACE_KEY_<APP> secret adds an app without touching TRACE_KEYS', () => {
+  const e = { ...env(), TRACE_KEY_BRAIN: 'bk' };
+  expect(appForKey(e, 'bk')).toBe('brain');
+  expect(appForKey(e, 'ck')).toBe('chat');
+  expect(appForKey({ TRACE_KEY_BRAIN: '' }, '')).toBe(null);
+});
+
 test('prompts, answers, keys and logins are refused, not stored', () => {
   for (const f of ['prompt', 'answer', 'messages', 'content', 'key', 'login', 'email']) {
     expect(validate({ ...ev, [f]: 'x' }).error).toContain('never stored');

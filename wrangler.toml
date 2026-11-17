@@ -18,5 +18,5 @@ database_id = "748475e4-c4d7-4d15-a4fb-688ef63e9da0"
 LOGIN_PUBLIC_KEY = "g_3cGlqaMDf4mM4Bgfv8EO6js7yW_bcSW7cOUpSwLc0"  # public half of the login Worker's key, not secret
 ADMIN_LOGINS = "odykyi"
 
-# Secrets: TRACE_KEYS (comma list "chat:<key>,inference:<key>", one key per app), SESSION_SECRET (signs the cookie),
+# Secrets: TRACE_KEY_<APP> (one secret per app, e.g. TRACE_KEY_BRAIN), TRACE_KEYS (comma list "chat:<key>,inference:<key>", one key per app), SESSION_SECRET (signs the cookie),
 # ADMIN_KEY (optional: lets scripts read /api/events with a Bearer key).

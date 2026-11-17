@@ -42,6 +42,7 @@ async function load(){
   const r=await fetch('/api/events?'+q,{credentials:'same-origin'});
   if(!r.ok){$('msg').textContent='Sign in with a GitHub account that may read traces.';return}
   const d=await r.json();
+  $('signin').style.display='none';
   const apps=[...new Set(d.totals.map(t=>t.app))];const cur=$('app').value;
   $('app').innerHTML='<option value="">All apps</option>'+apps.map(a=>'<option'+(a===cur?' selected':'')+'>'+esc(a)+'</option>').join('');
   $('tot').innerHTML=d.totals.map(t=>'<span>'+esc(t.app)+' · '+esc(t.kind)+' · '+t.events+'</span>').join('')||'';
