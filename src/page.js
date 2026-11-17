@@ -17,7 +17,7 @@ button,.btn{background:var(--ink);color:#000;border-color:var(--ink);cursor:poin
 button:hover,.btn:hover{opacity:.88}select:hover{border-color:var(--line2)}
 :focus-visible{outline:2px solid var(--violet);outline-offset:3px}
 .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:22px}
-.tot{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}.tot span{font:400 12px var(--mono);color:var(--soft);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+.tot{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}.tot button{cursor:pointer}.tot button{font:400 12px var(--mono);color:var(--soft);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px}.tot button.on{border-color:var(--violet);color:var(--ink)}
 .wrapt{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
 table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:12px 14px;border-top:1px solid var(--line);vertical-align:top}
 th{border-top:0;font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);background:var(--card2)}
@@ -46,9 +46,10 @@ async function load(){
   $('signin').style.display='none';
   const apps=[...new Set(d.totals.map(t=>t.app))];const cur=$('app').value;
   $('app').innerHTML='<option value="">All apps</option>'+apps.map(a=>'<option'+(a===cur?' selected':'')+'>'+esc(a)+'</option>').join('');
-  $('tot').innerHTML=d.totals.map(t=>'<span>'+esc(t.app)+' · '+esc(t.kind)+' · '+t.events+'</span>').join('')||'';
+  $('tot').innerHTML=d.totals.map(t=>'<button type="button" class="'+(t.app===$('app').value&&t.kind===$('kind').value?'on':'')+'" data-app="'+esc(t.app)+'" data-kind="'+esc(t.kind)+'" title="Show only this">'+esc(t.app)+' · '+esc(t.kind)+' · '+t.events+'</button>').join('')||'';
   $('msg').textContent=d.events.length?'':'Nothing went wrong in this time. That is the goal.';
   $('rows').innerHTML=d.events.map(e=>'<tr><td class="dim">'+esc(e.created.slice(5,16).replace('T',' '))+'</td><td>'+esc(e.app)+'</td><td class="k-'+esc(e.kind)+'">'+esc(e.kind)+(e.n>1?' ×'+e.n:'')+'</td><td>'+esc(e.why)+'<div class="dim">'+esc(e.route)+(e.detail?' · '+esc(e.detail):'')+'</div></td><td class="hide">'+esc([e.expected,e.actual].filter(Boolean).join(' → '))+'</td><td class="hide">'+(e.ms!=null?Math.round(e.ms/100)/10+' s':'')+'</td></tr>').join('');
 }
+$('tot').onclick=e=>{const b=e.target.closest('button');if(!b)return;const on=b.classList.contains('on');$('app').value=on?'':b.dataset.app;$('kind').value=on?'':b.dataset.kind;load()};
 $('go').onclick=load;['app','kind','days'].forEach(i=>$(i).onchange=load);load();
 </script></body></html>`;
