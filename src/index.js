@@ -55,7 +55,7 @@ export function overLimit(app, now = Date.now(), limit = PER_MINUTE) {
   h.n++;
   return h.n > limit;
 }
-export const resetLimits = () => hits.clear();
+export const resetLimits = () => { hits.clear(); lastCleanup = 0; };
 
 // Same app, route, kind and reason inside a minute is one row with a count.
 export async function record(env, app, e, now = new Date()) {
@@ -122,7 +122,8 @@ export async function auth(request, env) {
   return new Response(null, { status: 303, headers: { location: '/', 'set-cookie': 'traces_session=; Path=/; Max-Age=0' } });
 }
 
-export async function ingest(request, env) {
+let lastCleanup = 0;
+export async function ingest(request, env, ctx) {
   const app = appForKey(env, (request.headers.get('authorization') || '').replace(/^Bearer /, ''));
   if (!app) return json(401, { error: 'bad key' });
   if (overLimit(app)) return json(429, { error: 'too many traces this minute' });
@@ -130,13 +131,16 @@ export async function ingest(request, env) {
   try { body = JSON.parse((await request.text()) || '{}'); } catch { /* falls to validate */ }
   const v = validate(body);
   if (v.error) return json(400, { error: v.error });
-  return json(200, { ok: true, ...(await record(env, app, v.event)) });
+  const out = await record(env, app, v.event);
+  const t = Date.now();
+  if (t - lastCleanup > 3600000) { lastCleanup = t; const job = cleanup(env).catch(() => {}); if (ctx?.waitUntil) ctx.waitUntil(job); else await job; }
+  return json(200, { ok: true, ...out });
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
-    if (pathname === '/v1/trace' && request.method === 'POST') return ingest(request, env);
+    if (pathname === '/v1/trace' && request.method === 'POST') return ingest(request, env, ctx);
     if (pathname.startsWith('/auth/') && request.method === 'GET') return auth(request, env);
     if (pathname === '/api/events' && request.method === 'GET') return events(request, env);
     if (pathname === '/' && request.method === 'GET') return new Response(PAGE, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'" } });

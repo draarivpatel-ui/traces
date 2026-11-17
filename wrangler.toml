@@ -4,16 +4,14 @@ main = "src/index.js"
 compatibility_date = "2026-10-01"
 routes = [{ pattern = "traces.flisk.si", custom_domain = true }]
 
-# Daily: delete traces older than 14 days.
-[triggers]
-crons = ["23 3 * * *"]
+# No cron: the free plan allows 5 cron triggers per account and they are used. Old rows are deleted from ingest, at most once an hour.
 
-# Create once: bunx wrangler@4 d1 create flisk-traces, put its id below, then
-#   bunx wrangler@4 d1 execute flisk-traces --remote --file schema.sql
+# The account is at its D1 limit, so the traces table lives inside the flisk-jobs database (its own table, no clash).
+#   bunx wrangler@4 d1 execute flisk-jobs --remote --file schema.sql
 [[d1_databases]]
 binding = "DB"
-database_name = "flisk-traces"
-database_id = "REPLACE_WITH_D1_ID"
+database_name = "flisk-jobs"
+database_id = "748475e4-c4d7-4d15-a4fb-688ef63e9da0"
 
 # Reading the page: sign in with GitHub through login.flisk.si. Only the logins in ADMIN_LOGINS may read.
 [vars]

@@ -23,8 +23,7 @@ Read them at https://traces.flisk.si: press Sign in with GitHub (login.flisk.si)
 ## Deploy
 
 ```bash
-bunx wrangler@4 d1 create flisk-traces              # put the id in wrangler.toml
-bunx wrangler@4 d1 execute flisk-traces --remote --file schema.sql
+bunx wrangler@4 d1 execute flisk-jobs --remote --file schema.sql   # a free account is at its D1 limit, so the table shares flisk-jobs
 bunx wrangler@4 secret put TRACE_KEYS               # chat:<key>,inference:<key>   (openssl rand -hex 24 for each key)
 bunx wrangler@4 secret put SESSION_SECRET           # openssl rand -hex 32
 bunx wrangler@4 secret put ADMIN_KEY                # optional, for scripts

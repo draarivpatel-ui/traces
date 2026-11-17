@@ -173,3 +173,12 @@ test('sign-in without a matching state cookie is refused', async () => {
   const r = await worker.fetch(new Request(`https://t/auth/done?s=abc&flisk_token=${token}`), authEnv(pub));
   expect(r.status).toBe(400);
 });
+
+test('ingest removes rows older than 14 days, without a cron', async () => {
+  const e = env();
+  e.DB.raw.prepare("INSERT INTO traces (created, app, route, kind, why, last) VALUES ('2020-01-01T00:00:00.000Z','chat','/x','error','old','2020-01-01T00:00:00.000Z')").run();
+  const r = await post(e, 'ck', ev);
+  expect(r.status).toBe(200);
+  await new Promise((ok) => setTimeout(ok, 20));
+  expect(e.DB.raw.prepare("SELECT COUNT(*) AS c FROM traces WHERE why='old'").get().c).toBe(0);
+});
