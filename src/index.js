@@ -1,4 +1,5 @@
 import { PAGE } from './page.js';
+import { buildGraph } from './graph.js';
 
 import { verifyLoginToken, makeSession, readSession, mayRead } from './session.js';
 export const KINDS = ['error', 'rerouted', 'slow', 'unexpected', 'capped'];
@@ -102,6 +103,21 @@ export async function events(request, env) {
   return json(200, { days, totals: totals.results, events: rows.results });
 }
 
+// GET /api/graph?days=7&app=chat: counts of every reroute by day, reason, model, destination and language, for the Graph tab. Same access as /api/events.
+export async function graph(request, env) {
+  const key = env.ADMIN_KEY || '';
+  const given = (request.headers.get('authorization') || '').replace(/^Bearer /, '');
+  if (!(key && given === key) && !(await readSession(env, request))) return json(404, { error: 'not found' });
+  const q = new URL(request.url).searchParams;
+  const days = Math.min(KEEP_DAYS, Math.max(1, Number(q.get('days')) || 7));
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const where = ["created >= ?", "(kind = 'rerouted' OR (kind = 'error' AND expected = 'wolf'))"];
+  const args = [since];
+  if (q.get('app')) { where.push('app = ?'); args.push(q.get('app')); }
+  const rows = await env.DB.prepare(`SELECT created, kind, why, actual, detail, n FROM traces WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT 5000`).bind(...args).all();
+  return json(200, { days, ...buildGraph(rows.results) });
+}
+
 // Sign-in through login.flisk.si. /auth/start sends the person there; /auth/done checks the token and sets our cookie.
 export async function auth(request, env) {
   const url = new URL(request.url);
@@ -150,6 +166,7 @@ export default {
     const { pathname } = new URL(request.url);
     if (pathname === '/v1/trace' && request.method === 'POST') return ingest(request, env, ctx);
     if (pathname.startsWith('/auth/') && request.method === 'GET') return auth(request, env);
+    if (pathname === '/api/graph' && request.method === 'GET') return graph(request, env);
     if (pathname === '/api/events' && request.method === 'GET') return events(request, env);
     if (pathname === '/' && request.method === 'GET') return new Response(PAGE, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'" } });
     return json(404, { error: 'not found' });

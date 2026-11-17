@@ -195,3 +195,52 @@ test('a key echoed in an error text is hidden', () => {
   expect(scrub('bad sk-abc123DEF456 and Bearer abc.def')).toBe('bad [key hidden] and [key hidden]');
   expect(scrub('a model call took 27 s')).toBe('a model call took 27 s');
 });
+
+// ---- Graph tab ----
+import { buildGraph, reasonOf, destOf, modelOf, langOf } from '../src/graph.js';
+import { PAGE } from '../src/page.js';
+
+test('graph helpers classify reroute rows', () => {
+  expect(reasonOf('Wolf 429, OpenRouter answered')).toBe('rate limit');
+  expect(reasonOf('wolf resting')).toBe('wolf resting');
+  expect(reasonOf('Wolf 503')).toBe('server error');
+  expect(destOf('workers-ai (@cf/meta/llama-3.1-8b-instruct-fast)')).toBe('workers-ai');
+  expect(modelOf('workers-ai (@cf/meta/llama)', '')).toBe('@cf/meta/llama');
+  expect(modelOf('openrouter', 'answered by openrouter after 1 failed')).toBe('openrouter');
+  expect(langOf('answered by x after 1 failed · lang uk')).toBe('uk');
+  expect(langOf('')).toBe('unknown');
+});
+
+test('buildGraph counts by day, reason, model, language and builds the flow', () => {
+  const rows = [
+    { created: '2026-11-16 10:00:00', kind: 'rerouted', why: 'Wolf 429', actual: 'openrouter (m1)', detail: 'lang en', n: 3 },
+    { created: '2026-11-16 11:00:00', kind: 'rerouted', why: 'Wolf 429', actual: 'workers-ai (m2)', detail: 'lang uk', n: 1 },
+    { created: '2026-11-17 09:00:00', kind: 'error', why: 'all failed', actual: '', detail: 'lang uk', n: 2 },
+  ];
+  const g = buildGraph(rows);
+  expect(g.total).toBe(6);
+  expect(g.failed).toBe(2);
+  expect(g.daily['2026-11-16']).toEqual({ openrouter: 3, 'workers-ai': 1 });
+  expect(g.reasons).toEqual({ 'rate limit': 4, 'every model failed': 2 });
+  expect(g.langs).toEqual({ en: 3, uk: 3 });
+  expect(g.flow[0]).toEqual({ lang: 'en', reason: 'rate limit', dest: 'openrouter', model: 'm1', n: 3 });
+});
+
+test('/api/graph needs admin and counts stored reroutes', async () => {
+  const e = env();
+  await post(e, 'ck', { ...ev, actual: 'openrouter (m1)', detail: 'lang en' });
+  const get = (key) => worker.fetch(new Request('https://t/api/graph?days=7', { headers: key ? { authorization: `Bearer ${key}` } : {} }), e);
+  expect((await get()).status).toBe(404);
+  expect((await get('wrong')).status).toBe(404);
+  const g = await (await get('adm')).json();
+  expect(g.total).toBe(1);
+  expect(g.dests).toEqual({ openrouter: 1 });
+  expect(g.days).toBe(7);
+});
+
+test('page has Graph tab and its script parses', () => {
+  expect(PAGE).toContain('id="tabgraph"');
+  expect(PAGE).toContain('/api/graph');
+  const code = PAGE.match(/<script[^>]*>([\s\S]*?)<\/script>/)[1];
+  expect(() => new Function(code)).not.toThrow();
+});
