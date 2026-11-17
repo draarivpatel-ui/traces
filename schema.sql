@@ -13,8 +13,10 @@ CREATE TABLE IF NOT EXISTS traces (
   ms INTEGER,
   status INTEGER,
   detail TEXT,                  -- first 200 characters of the error, no prompt text
+  lang TEXT,                    -- two-letter language code of the request (en, uk), never text
   n INTEGER NOT NULL DEFAULT 1, -- how many times the same event repeated inside a minute
   last TEXT NOT NULL            -- time of the latest repeat
 );
 CREATE INDEX IF NOT EXISTS traces_created ON traces (created);
 CREATE INDEX IF NOT EXISTS traces_kind ON traces (app, kind, created);
+-- Existing database, run once: ALTER TABLE traces ADD COLUMN lang TEXT;

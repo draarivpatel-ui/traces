@@ -27,7 +27,7 @@ export function buildGraph(rows = [], asks = 0) {
     const n = Number(r.n) || 1;
     const dest = r.kind === 'error' ? 'none' : destOf(r.actual);
     const reason = r.kind === 'error' ? 'every model failed' : reasonOf(r.why);
-    const lang = langOf(r.detail);
+    const lang = r.lang || langOf(r.detail);
     const model = r.kind === 'error' ? 'none' : modelOf(r.actual, r.detail);
     g.total += n;
     if (dest === 'none') g.failed += n;

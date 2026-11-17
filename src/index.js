@@ -5,7 +5,7 @@ import { verifyLoginToken, makeSession, readSession, mayRead } from './session.j
 export const KINDS = ['error', 'rerouted', 'slow', 'unexpected', 'capped'];
 export const KEEP_DAYS = 14;
 export const PER_MINUTE = 100; // rows a minute per app: a storm of errors cannot fill D1
-const FIELDS = ['route', 'kind', 'why', 'expected', 'actual', 'model', 'effort', 'ms', 'status', 'detail'];
+const FIELDS = ['route', 'kind', 'why', 'expected', 'actual', 'model', 'effort', 'ms', 'status', 'detail', 'lang'];
 // Anything that could carry a person's words or secrets is refused, not stored.
 const FORBIDDEN = /^(prompt|prompts|answer|messages?|content|text|key|token|secret|password|login|email|body)$/i;
 
@@ -52,6 +52,7 @@ export function validate(body) {
       ms: num(body.ms),
       status: num(body.status),
       detail: cut(body.detail, 200),
+      lang: /^[a-z]{2}$/i.test(String(body.lang || '')) ? String(body.lang).toLowerCase() : null,
     },
   };
 }
@@ -75,8 +76,8 @@ export async function record(env, app, e, now = new Date()) {
     await env.DB.prepare('UPDATE traces SET n = n + 1, last = ? WHERE id = ?').bind(at, same.id).run();
     return { merged: true };
   }
-  await env.DB.prepare('INSERT INTO traces (created, app, route, kind, why, expected, actual, model, effort, ms, status, detail, n, last) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)')
-    .bind(at, app, e.route, e.kind, e.why, e.expected, e.actual, e.model, e.effort, e.ms, e.status, e.detail, at)
+  await env.DB.prepare('INSERT INTO traces (created, app, route, kind, why, expected, actual, model, effort, ms, status, detail, lang, n, last) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)')
+    .bind(at, app, e.route, e.kind, e.why, e.expected, e.actual, e.model, e.effort, e.ms, e.status, e.detail, e.lang ?? null, at)
     .run();
   return { merged: false };
 }
@@ -98,7 +99,7 @@ export async function events(request, env) {
   const args = [since];
   if (q.get('app')) { where.push('app = ?'); args.push(q.get('app')); }
   if (KINDS.includes(q.get('kind'))) { where.push('kind = ?'); args.push(q.get('kind')); }
-  const rows = await env.DB.prepare(`SELECT id, created, last, app, route, kind, why, expected, actual, model, effort, ms, status, detail, n FROM traces WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT 100`).bind(...args).all();
+  const rows = await env.DB.prepare(`SELECT id, created, last, app, route, kind, why, expected, actual, model, effort, ms, status, detail, lang, n FROM traces WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT 100`).bind(...args).all();
   const totals = await env.DB.prepare('SELECT app, kind, SUM(n) AS events FROM traces WHERE created >= ? GROUP BY app, kind ORDER BY events DESC').bind(since).all();
   return json(200, { days, totals: totals.results, events: rows.results });
 }
@@ -114,7 +115,7 @@ export async function graph(request, env) {
   const where = ["created >= ?", "(kind = 'rerouted' OR (kind = 'error' AND expected = 'wolf'))"];
   const args = [since];
   if (q.get('app')) { where.push('app = ?'); args.push(q.get('app')); }
-  const rows = await env.DB.prepare(`SELECT created, kind, why, actual, detail, n FROM traces WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT 5000`).bind(...args).all();
+  const rows = await env.DB.prepare(`SELECT created, kind, why, actual, detail, lang, n FROM traces WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT 5000`).bind(...args).all();
   return json(200, { days, ...buildGraph(rows.results) });
 }
 

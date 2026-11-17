@@ -244,3 +244,13 @@ test('page has Graph tab and its script parses', () => {
   const code = PAGE.match(/<script[^>]*>([\s\S]*?)<\/script>/)[1];
   expect(() => new Function(code)).not.toThrow();
 });
+
+test('lang is stored as a two-letter code and drives the graph language', async () => {
+  expect(validate({ route: '/r', kind: 'rerouted', why: 'w', lang: 'UK' }).event.lang).toBe('uk');
+  expect(validate({ route: '/r', kind: 'rerouted', why: 'w', lang: 'Ukrainian text here' }).event.lang).toBeNull();
+  const e = env();
+  await post(e, 'ck', { ...ev, actual: 'openrouter (m1)', lang: 'uk' });
+  const g = await (await worker.fetch(new Request('https://t/api/graph', { headers: { authorization: 'Bearer adm' } }), e)).json();
+  expect(g.langs).toEqual({ uk: 1 });
+  expect(buildGraph([{ created: '2026-11-17 1', kind: 'rerouted', why: 'x', actual: 'a', detail: 'lang en', lang: 'de', n: 1 }]).langs).toEqual({ de: 1 });
+});
