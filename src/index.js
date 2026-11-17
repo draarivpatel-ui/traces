@@ -1,5 +1,6 @@
 import { PAGE } from './page.js';
 
+import { verifyLoginToken, makeSession, readSession, mayRead } from './session.js';
 export const KINDS = ['error', 'rerouted', 'slow', 'unexpected', 'capped'];
 export const KEEP_DAYS = 14;
 export const PER_MINUTE = 100; // rows a minute per app: a storm of errors cannot fill D1
@@ -76,11 +77,11 @@ export async function cleanup(env, now = new Date()) {
   await env.DB.prepare('DELETE FROM traces WHERE created < ?').bind(before).run();
 }
 
-// GET /api/events?days=7&app=chat&kind=rerouted with Authorization: Bearer <ADMIN_KEY>
+// GET /api/events?days=7&app=chat&kind=rerouted: a signed-in login from ADMIN_LOGINS (the page), or Authorization: Bearer <ADMIN_KEY> (scripts)
 export async function events(request, env) {
   const key = env.ADMIN_KEY || '';
   const given = (request.headers.get('authorization') || '').replace(/^Bearer /, '');
-  if (!key || given !== key) return json(404, { error: 'not found' });
+  if (!(key && given === key) && !(await readSession(env, request))) return json(404, { error: 'not found' });
   const q = new URL(request.url).searchParams;
   const days = Math.min(KEEP_DAYS, Math.max(1, Number(q.get('days')) || 7));
   const since = new Date(Date.now() - days * 86400000).toISOString();
@@ -91,6 +92,34 @@ export async function events(request, env) {
   const rows = await env.DB.prepare(`SELECT id, created, last, app, route, kind, why, expected, actual, model, effort, ms, status, detail, n FROM traces WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT 100`).bind(...args).all();
   const totals = await env.DB.prepare('SELECT app, kind, SUM(n) AS events FROM traces WHERE created >= ? GROUP BY app, kind ORDER BY events DESC').bind(since).all();
   return json(200, { days, totals: totals.results, events: rows.results });
+}
+
+// Sign-in through login.flisk.si. /auth/start sends the person there; /auth/done checks the token and sets our cookie.
+export async function auth(request, env) {
+  const url = new URL(request.url);
+  const page = (msg, status) => new Response(`<!doctype html><meta charset="utf-8"><title>Traces sign-in</title><p>${msg} <a href="/">Back</a></p>`, { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
+  if (url.pathname === '/auth/start') {
+    if (!env.LOGIN_PUBLIC_KEY || !env.SESSION_SECRET) return page('Sign-in is not set up yet.', 503);
+    const state = crypto.randomUUID();
+    const back = new URL('/auth/done', url.origin);
+    back.searchParams.set('s', state);
+    const headers = new Headers({ location: `${env.LOGIN_ORIGIN || 'https://login.flisk.si'}/start?return=${encodeURIComponent(back.href)}`, 'cache-control': 'no-store' });
+    headers.append('set-cookie', `traces_state=${state}; Path=/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`);
+    return new Response(null, { status: 302, headers });
+  }
+  if (url.pathname === '/auth/done') {
+    const cookie = /(?:^|;\s*)traces_state=([^;]+)/.exec(request.headers.get('cookie') || '')?.[1] || '';
+    const st = url.searchParams.get('s') || '';
+    const who = env.LOGIN_PUBLIC_KEY && env.SESSION_SECRET && st && st === cookie ? await verifyLoginToken(url.searchParams.get('flisk_token'), env.LOGIN_PUBLIC_KEY, url.origin) : null;
+    if (!who) return page('The sign-in link expired. Start again.', 400);
+    if (!mayRead(env, who.login)) return page('This GitHub account may not read traces.', 403);
+    const headers = new Headers({ location: '/', 'cache-control': 'no-store' });
+    headers.append('set-cookie', await makeSession(env, who.login));
+    headers.append('set-cookie', 'traces_state=; Path=/auth; Max-Age=0');
+    return new Response(null, { status: 303, headers });
+  }
+  // /auth/signout
+  return new Response(null, { status: 303, headers: { location: '/', 'set-cookie': 'traces_session=; Path=/; Max-Age=0' } });
 }
 
 export async function ingest(request, env) {
@@ -108,6 +137,7 @@ export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
     if (pathname === '/v1/trace' && request.method === 'POST') return ingest(request, env);
+    if (pathname.startsWith('/auth/') && request.method === 'GET') return auth(request, env);
     if (pathname === '/api/events' && request.method === 'GET') return events(request, env);
     if (pathname === '/' && request.method === 'GET') return new Response(PAGE, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'" } });
     return json(404, { error: 'not found' });

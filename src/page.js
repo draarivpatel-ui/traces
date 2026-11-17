@@ -1,4 +1,4 @@
-// One page: paste the admin key once (kept in this tab only), see the newest problems by app and kind.
+// One page: sign in with GitHub (login.flisk.si), see the newest problems by app and kind.
 export const PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Flisk Traces</title>
 <style>
 :root{--bg:#fbfaf6;--fg:#15171a;--mute:#6b6f76;--line:#dcdad2;--bad:#b3261e}
@@ -15,19 +15,17 @@ th{color:var(--mute);font-weight:500}.k-error,.k-unexpected{color:var(--bad)}.di
 @media(max-width:640px){.hide{display:none}}
 </style></head><body><main>
 <h1>Flisk Traces</h1><p>Only what went wrong: errors, reroutes, slow or unexpected flows, hit caps. Kept 14 days.</p>
-<div class="bar"><input id="key" type="password" placeholder="Admin key" autocomplete="off"><select id="app"><option value="">All apps</option></select><select id="kind"><option value="">All kinds</option><option>error</option><option>rerouted</option><option>slow</option><option>unexpected</option><option>capped</option></select><select id="days"><option>1</option><option selected>7</option><option>14</option></select><button id="go">Show</button></div>
+<div class="bar"><a id="signin" href="/auth/start">Sign in with GitHub</a><select id="app"><option value="">All apps</option></select><select id="kind"><option value="">All kinds</option><option>error</option><option>rerouted</option><option>slow</option><option>unexpected</option><option>capped</option></select><select id="days"><option>1</option><option selected>7</option><option>14</option></select><button id="go">Show</button></div>
 <div class="tot" id="tot"></div><div id="msg" class="dim"></div>
 <table><thead><tr><th>When</th><th>App</th><th>Kind</th><th>What</th><th class="hide">Planned → happened</th><th class="hide">Time</th></tr></thead><tbody id="rows"></tbody></table>
 </main><script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-try{$('key').value=sessionStorage.getItem('tk')||''}catch{}
 async function load(){
-  const key=$('key').value;try{sessionStorage.setItem('tk',key)}catch{}
   const q=new URLSearchParams({days:$('days').value});if($('app').value)q.set('app',$('app').value);if($('kind').value)q.set('kind',$('kind').value);
   $('msg').textContent='Loading…';
-  const r=await fetch('/api/events?'+q,{headers:{authorization:'Bearer '+key}});
-  if(!r.ok){$('msg').textContent='Wrong key.';return}
+  const r=await fetch('/api/events?'+q,{credentials:'same-origin'});
+  if(!r.ok){$('msg').textContent='Sign in with a GitHub account that may read traces.';return}
   const d=await r.json();
   const apps=[...new Set(d.totals.map(t=>t.app))];const cur=$('app').value;
   $('app').innerHTML='<option value="">All apps</option>'+apps.map(a=>'<option'+(a===cur?' selected':'')+'>'+esc(a)+'</option>').join('');
@@ -35,5 +33,5 @@ async function load(){
   $('msg').textContent=d.events.length?'':'Nothing went wrong in this time. That is the goal.';
   $('rows').innerHTML=d.events.map(e=>'<tr><td class="dim">'+esc(e.created.slice(5,16).replace('T',' '))+'</td><td>'+esc(e.app)+'</td><td class="k-'+esc(e.kind)+'">'+esc(e.kind)+(e.n>1?' ×'+e.n:'')+'</td><td>'+esc(e.why)+'<div class="dim">'+esc(e.route)+(e.detail?' · '+esc(e.detail):'')+'</div></td><td class="hide">'+esc([e.expected,e.actual].filter(Boolean).join(' → '))+'</td><td class="hide">'+(e.ms!=null?Math.round(e.ms/100)/10+' s':'')+'</td></tr>').join('');
 }
-$('go').onclick=load;if($('key').value)load();
+$('go').onclick=load;load();
 </script></body></html>`;

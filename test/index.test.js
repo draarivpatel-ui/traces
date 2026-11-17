@@ -126,3 +126,50 @@ test('the page loads and never stores the key in the page itself', async () => {
   expect(r.headers.get('content-security-policy')).toContain("default-src 'none'");
   expect(html).not.toContain('adm');
 });
+
+// Sign-in through login.flisk.si: a real Ed25519 token, like the login Worker makes.
+const b64u = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+async function loginToken(login, aud, expSeconds = Math.floor(Date.now() / 1000) + 60) {
+  const pair = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
+  const payload = b64u(new TextEncoder().encode(JSON.stringify({ login, id: 7, aud, iat: 0, exp: expSeconds })));
+  const sig = b64u(await crypto.subtle.sign('Ed25519', pair.privateKey, new TextEncoder().encode(payload)));
+  return { token: `${payload}.${sig}`, pub: b64u(await crypto.subtle.exportKey('raw', pair.publicKey)) };
+}
+const authEnv = (pub) => ({ ...env(), LOGIN_PUBLIC_KEY: pub, SESSION_SECRET: 'sess', ADMIN_LOGINS: 'Odykyi, someone' });
+async function signIn(e, token) {
+  const start = await worker.fetch(new Request('https://t/auth/start'), e);
+  expect(start.status).toBe(302);
+  expect(start.headers.get('location')).toStartWith('https://login.flisk.si/start?return=');
+  const state = /traces_state=([^;]+)/.exec(start.headers.get('set-cookie'))[1];
+  return worker.fetch(new Request(`https://t/auth/done?s=${state}&flisk_token=${token}`, { headers: { cookie: `traces_state=${state}` } }), e);
+}
+
+test('a listed GitHub login signs in and reads, then the cookie is enough', async () => {
+  const { token, pub } = await loginToken('odykyi', 'https://t');
+  const e = authEnv(pub);
+  await post(e, 'ck', ev);
+  const done = await signIn(e, token);
+  expect(done.status).toBe(303);
+  const cookie = /traces_session=[^;]+/.exec(done.headers.getSetCookie().join('\n'))[0];
+  const r = await worker.fetch(new Request('https://t/api/events', { headers: { cookie } }), e);
+  expect(r.status).toBe(200);
+  expect((await r.json()).events.length).toBe(1);
+});
+
+test('another login, an expired or foreign token, and a forged cookie read nothing', async () => {
+  const e0 = authEnv((await loginToken('x', 'https://t')).pub);
+  const a = await loginToken('stranger', 'https://t');
+  expect((await signIn(authEnv(a.pub), a.token)).status).toBe(403);
+  const old = await loginToken('odykyi', 'https://t', Math.floor(Date.now() / 1000) - 5);
+  expect((await signIn(authEnv(old.pub), old.token)).status).toBe(400);
+  const other = await loginToken('odykyi', 'https://chat.flisk.si');
+  expect((await signIn(authEnv(other.pub), other.token)).status).toBe(400);
+  const forged = 'traces_session=odykyi.9999999999.AAAA';
+  expect((await worker.fetch(new Request('https://t/api/events', { headers: { cookie: forged } }), e0)).status).toBe(404);
+});
+
+test('sign-in without a matching state cookie is refused', async () => {
+  const { token, pub } = await loginToken('odykyi', 'https://t');
+  const r = await worker.fetch(new Request(`https://t/auth/done?s=abc&flisk_token=${token}`), authEnv(pub));
+  expect(r.status).toBe(400);
+});
