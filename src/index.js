@@ -9,7 +9,10 @@ const FIELDS = ['route', 'kind', 'why', 'expected', 'actual', 'model', 'effort',
 const FORBIDDEN = /^(prompt|prompts|answer|messages?|content|text|key|token|secret|password|login|email|body)$/i;
 
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' } });
-const cut = (v, n) => (v == null ? null : String(v).slice(0, n));
+// Provider errors echo part of the key ("key_gl8C********hRTv"); never keep any piece of one.
+const SECRET = /\b(?:sk|pk|key|ghp|gho|xox[abp])[-_][A-Za-z0-9*_-]{4,}|\b[A-Za-z0-9]{4,}\*{3,}[A-Za-z0-9]*|Bearer\s+\S+/g;
+export const scrub = (s) => String(s).replace(SECRET, '[key hidden]');
+const cut = (v, n) => (v == null ? null : scrub(v).slice(0, n));
 const num = (v) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Math.round(Number(v)) : null);
 
 // "chat:abc,inference:def" -> the app a key belongs to, or null.

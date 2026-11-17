@@ -1,7 +1,7 @@
 import { test, expect, beforeEach } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { readFileSync } from 'node:fs';
-import worker, { appForKey, validate, overLimit, resetLimits, record, cleanup, KEEP_DAYS } from '../src/index.js';
+import worker, { scrub, appForKey, validate, overLimit, resetLimits, record, cleanup, KEEP_DAYS } from '../src/index.js';
 
 // A D1-shaped wrapper over a real SQLite database that runs the real schema.sql.
 function d1() {
@@ -188,4 +188,10 @@ test('ingest removes rows older than 14 days, without a cron', async () => {
   expect(r.status).toBe(200);
   await new Promise((ok) => setTimeout(ok, 20));
   expect(e.DB.raw.prepare("SELECT COUNT(*) AS c FROM traces WHERE why='old'").get().c).toBe(0);
+});
+
+test('a key echoed in an error text is hidden', () => {
+  expect(scrub('Incorrect API key provided: key_gl8C********hRTv. You can')).toBe('Incorrect API key provided: [key hidden]. You can');
+  expect(scrub('bad sk-abc123DEF456 and Bearer abc.def')).toBe('bad [key hidden] and [key hidden]');
+  expect(scrub('a model call took 27 s')).toBe('a model call took 27 s');
 });
