@@ -169,7 +169,7 @@ export default {
     if (pathname.startsWith('/auth/') && request.method === 'GET') return auth(request, env);
     if (pathname === '/api/graph' && request.method === 'GET') return graph(request, env);
     if (pathname === '/api/events' && request.method === 'GET') return events(request, env);
-    if (pathname === '/' && request.method === 'GET') return new Response(PAGE, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'" } });
+    if (pathname === '/' && request.method === 'GET') return new Response(PAGE, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; script-src 'unsafe-inline' https://flisk.sh; style-src 'unsafe-inline'; connect-src 'self' https://analytics.flisk.si" } });
     return json(404, { error: 'not found' });
   },
   async scheduled(_event, env) {
