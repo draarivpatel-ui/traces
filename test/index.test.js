@@ -23,6 +23,17 @@ const post = (e, key, body) => worker.fetch(new Request('https://t/v1/trace', { 
 const ev = { route: '/api/ask', kind: 'rerouted', why: 'Wolf 429, OpenRouter answered', expected: 'wolf', actual: 'wolf:429>openrouter:ok' };
 beforeEach(resetLimits);
 
+test('the events query rejects an unrecognized kind with the supported kinds', async () => {
+  const request = new Request('https://t/api/events?kind=bogus', {
+    headers: { authorization: 'Bearer adm' },
+  });
+  const response = await worker.fetch(request, env());
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({
+    error: 'kind must be one of error, rerouted, slow, unexpected, capped',
+  });
+});
+
 test('a key belongs to one app, a wrong key to none', () => {
   const e = env();
   expect(appForKey(e, 'ck')).toBe('chat');

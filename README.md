@@ -20,6 +20,8 @@ Fields: `route`, `kind` (error, rerouted, slow, unexpected, capped), `why` are r
 
 Read them at https://traces.flisk.si: press Sign in with GitHub (login.flisk.si). Only the logins in `ADMIN_LOGINS` may read. Scripts can use `GET /api/events?days=7&app=chat&kind=rerouted` with `Authorization: Bearer $ADMIN_KEY`.
 
+The `/api/events` response reports the effective `days` value. The default is 7 for a missing, zero, or nonnumeric value; other numeric values are clamped to 1–14. Omit `app` or `kind` to leave that filter open. An explicit `kind` must be `error`, `rerouted`, `slow`, `unexpected`, or `capped`. Other values return HTTP 400.
+
 ## Deploy
 
 ```bash

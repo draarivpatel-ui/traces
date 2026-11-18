@@ -93,12 +93,14 @@ export async function events(request, env) {
   const given = (request.headers.get('authorization') || '').replace(/^Bearer /, '');
   if (!(key && given === key) && !(await readSession(env, request))) return json(404, { error: 'not found' });
   const q = new URL(request.url).searchParams;
+  const kind = q.get('kind');
+  if (kind !== null && !KINDS.includes(kind)) return json(400, { error: `kind must be one of ${KINDS.join(', ')}` });
   const days = Math.min(KEEP_DAYS, Math.max(1, Number(q.get('days')) || 7));
   const since = new Date(Date.now() - days * 86400000).toISOString();
   const where = ['created >= ?'];
   const args = [since];
   if (q.get('app')) { where.push('app = ?'); args.push(q.get('app')); }
-  if (KINDS.includes(q.get('kind'))) { where.push('kind = ?'); args.push(q.get('kind')); }
+  if (kind !== null) { where.push('kind = ?'); args.push(kind); }
   const rows = await env.DB.prepare(`SELECT id, created, last, app, route, kind, why, expected, actual, model, effort, ms, status, detail, lang, n FROM traces WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT 100`).bind(...args).all();
   const totals = await env.DB.prepare('SELECT app, kind, SUM(n) AS events FROM traces WHERE created >= ? GROUP BY app, kind ORDER BY events DESC').bind(since).all();
   return json(200, { days, totals: totals.results, events: rows.results });
