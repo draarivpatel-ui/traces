@@ -34,7 +34,7 @@ footer{margin-top:28px;font:400 12px var(--mono);color:var(--faint)}
 svg text{font:400 11px var(--mono);fill:var(--soft)}svg .m{fill:var(--mute)}svg{width:100%;height:auto;display:block}
 @media(max-width:640px){.hide{display:none}main{padding-top:24px}td,th{padding:10px}}
 </style><script defer data-domain="traces.flisk.si" src="https://flisk.sh/a.js"></script><script src="https://flisk.si/assets/bar.js" data-product="Traces" data-icon="traces" data-accent="#b49cff" data-siblings="Cilytics,Ranker" data-text="Shows only the requests across Flisk that went wrong." defer></script></head><body><main>
-<div class="kicker">Flisk &middot; Traces</div><h1>Only what <span>went wrong.</span></h1><p>Errors, reroutes, slow or unexpected flows and hit caps. A normal request writes nothing. Kept 14 days.</p>
+<!--LOGIN--><div class="kicker">Flisk &middot; Traces</div><h1>Only what <span>went wrong.</span></h1><p>Errors, reroutes, slow or unexpected flows and hit caps. A normal request writes nothing. Kept 14 days.</p>
 <div class="bar"><a class="btn" id="signin" href="/auth/start">Sign in with GitHub</a><select id="app"><option value="">All apps</option></select><select id="kind"><option value="">All kinds</option><option>error</option><option>rerouted</option><option>slow</option><option>unexpected</option><option>capped</option></select><select id="days"><option value="1">Last 1 day</option><option value="7" selected>Last 7 days</option><option value="14">Last 14 days</option></select><button id="go">Refresh</button></div>
 <div class="tabs"><button type="button" id="tabrows" class="on">Rows</button><button type="button" id="tabgraph">Graph</button></div>
 <div class="tot" id="tot"></div>

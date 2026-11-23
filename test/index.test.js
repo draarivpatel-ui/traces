@@ -1,6 +1,7 @@
 import { test, expect, beforeEach } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { readFileSync } from 'node:fs';
+import { makeSession } from '../src/session.js';
 import worker, { scrub, appForKey, validate, overLimit, resetLimits, record, cleanup, KEEP_DAYS } from '../src/index.js';
 
 // A D1-shaped wrapper over a real SQLite database that runs the real schema.sql.
@@ -264,4 +265,42 @@ test('lang is stored as a two-letter code and drives the graph language', async 
   const g = await (await worker.fetch(new Request('https://t/api/graph', { headers: { authorization: 'Bearer adm' } }), e)).json();
   expect(g.langs).toEqual({ uk: 1 });
   expect(buildGraph([{ created: '2026-11-17 1', kind: 'rerouted', why: 'x', actual: 'a', detail: 'lang en', lang: 'de', n: 1 }]).langs).toEqual({ de: 1 });
+});
+
+// The org bar (flisk.si/assets/bar.js) reads the signed-in login from [data-flisk-login]; its whole text must be the login.
+const hookOf = (html) => [...html.matchAll(/<span data-flisk-login hidden>([^<]*)<\/span>/g)].map((m) => m[1]);
+const getPage = async (e, cookie) => worker.fetch(new Request('https://t/', { headers: cookie ? { cookie } : {} }), e);
+
+test('GET / carries the login in a hidden hook for an allowed signed-in person only', async () => {
+  const { token, pub } = await loginToken('odykyi', 'https://t');
+  const e = authEnv(pub);
+  const cookie = /traces_session=[^;]+/.exec((await signIn(e, token)).headers.getSetCookie().join('\n'))[0];
+  const r = await getPage(e, cookie);
+  expect(r.headers.get('cache-control')).toBe('no-store');
+  const html = await r.text();
+  expect(hookOf(html)).toEqual(['odykyi']);
+  expect(html).not.toContain('<!--LOGIN-->');
+  expect(html).toContain('id="signin"');
+});
+
+test('GET / has no hook when signed out, forged, or not on the allowlist', async () => {
+  const { pub } = await loginToken('x', 'https://t');
+  const e = authEnv(pub);
+  for (const cookie of [undefined, 'traces_session=odykyi.9999999999.AAAA']) {
+    const html = await (await getPage(e, cookie)).text();
+    expect(html).not.toContain('data-flisk-login');
+    expect(html).not.toContain('<!--LOGIN-->');
+  }
+  // a validly signed cookie for a login that left the allowlist
+  const { token, pub: pub2 } = await loginToken('odykyi', 'https://t');
+  const e2 = authEnv(pub2);
+  const cookie = /traces_session=[^;]+/.exec((await signIn(e2, token)).headers.getSetCookie().join('\n'))[0];
+  expect((await (await getPage({ ...e2, ADMIN_LOGINS: 'someone' }, cookie)).text())).not.toContain('data-flisk-login');
+});
+
+test('GET / escapes the login', async () => {
+  const e = authEnv('unused');
+  e.ADMIN_LOGINS = '<b>x';
+  const set = await makeSession(e, '<b>x');
+  expect(hookOf(await (await getPage(e, set.split(';')[0])).text())).toEqual(['&lt;b&gt;x']);
 });

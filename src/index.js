@@ -164,6 +164,13 @@ export async function ingest(request, env, ctx) {
   return json(200, { ok: true, ...out });
 }
 
+const escHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+// The org bar reads the signed-in login from [data-flisk-login]. Only an allowed, signed-in person gets it; the page is no-store already.
+async function pageFor(request, env) {
+  const login = await readSession(env, request);
+  return PAGE.replace('<!--LOGIN-->', login ? `<span data-flisk-login hidden>${escHtml(login)}</span>` : '');
+}
+
 export default {
   async fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
@@ -171,7 +178,7 @@ export default {
     if (pathname.startsWith('/auth/') && request.method === 'GET') return auth(request, env);
     if (pathname === '/api/graph' && request.method === 'GET') return graph(request, env);
     if (pathname === '/api/events' && request.method === 'GET') return events(request, env);
-    if (pathname === '/' && request.method === 'GET') return new Response(PAGE, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; script-src 'unsafe-inline' https://flisk.sh https://flisk.si; style-src 'unsafe-inline' https://flisk.si; img-src https://flisk.si data:; font-src https://flisk.si data:; connect-src 'self' https://analytics.flisk.si https://flisk.si" } });
+    if (pathname === '/' && request.method === 'GET') return new Response(await pageFor(request, env), { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; script-src 'unsafe-inline' https://flisk.sh https://flisk.si; style-src 'unsafe-inline' https://flisk.si; img-src https://flisk.si data:; font-src https://flisk.si data:; connect-src 'self' https://analytics.flisk.si https://flisk.si" } });
     return json(404, { error: 'not found' });
   },
   async scheduled(_event, env) {
