@@ -43,13 +43,17 @@ svg text{font:400 11px var(--mono);fill:var(--soft)}svg .m{fill:var(--mute)}svg{
 </main><script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let rowsRequest=0;
 async function load(){
+  const request=++rowsRequest;
   const q=new URLSearchParams({days:$('days').value});if($('app').value)q.set('app',$('app').value);if($('kind').value)q.set('kind',$('kind').value);
   $('msg').textContent='Loading…';
   const r=await fetch('/api/events?'+q,{credentials:'same-origin'});
+  if(request!==rowsRequest)return;
   if(!r.ok){$('msg').textContent='Sign in with a GitHub account that may read traces.';$('rows').innerHTML='';$('tot').innerHTML='';$('wrapt').querySelector('table').style.display='none';return}
-  $('wrapt').querySelector('table').style.display='';
   const d=await r.json();
+  if(request!==rowsRequest)return;
+  $('wrapt').querySelector('table').style.display='';
   $('signin').style.display='none';
   const apps=[...new Set(d.totals.map(t=>t.app))];const cur=$('app').value;
   $('app').innerHTML='<option value="">All apps</option>'+apps.map(a=>'<option'+(a===cur?' selected':'')+'>'+esc(a)+'</option>').join('');
